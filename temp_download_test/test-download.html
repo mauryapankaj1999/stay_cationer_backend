@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test PDF Download</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label {
+            font-weight: bold;
+        }
+        input, button {
+            padding: 8px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 100px;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test PDF Download</h1>
+    
+    <div class="container">
+        <div class="form-group">
+            <label for="orderId">Order ID:</label>
+            <input type="text" id="orderId" placeholder="Enter order ID">
+        </div>
+        
+        <div class="form-group">
+            <label>Admin Access:</label>
+            <label style="font-weight: normal;">
+                <input type="checkbox" id="isAdmin"> Yes, I am an admin
+            </label>
+        </div>
+        
+        <div class="form-group">
+            <label>Download Method:</label>
+            <div>
+                <button onclick="downloadWithFetch()">Download with Fetch API</button>
+                <button onclick="downloadWithWindowOpen()">Download with Window Open</button>
+                <button onclick="downloadDirectly()">Direct Link Download</button>
+            </div>
+        </div>
+        
+        <div class="result" id="result">
+            <p>Results will appear here...</p>
+        </div>
+        
+        <div id="directLink"></div>
+    </div>
+
+    <script>
+        function getParams() {
+            const orderId = document.getElementById('orderId').value.trim();
+            const isAdmin = document.getElementById('isAdmin').checked;
+            
+            if (!orderId) {
+                showError("Please enter an Order ID");
+                return null;
+            }
+            
+            return { orderId, isAdmin };
+        }
+        
+        function showError(message) {
+            document.getElementById('result').innerHTML = `<p class="error">${message}</p>`;
+        }
+        
+        function showResult(message) {
+            document.getElementById('result').innerHTML = `<p>${message}</p>`;
+        }
+        
+        // Method 1: Using Fetch API
+        async function downloadWithFetch() {
+            const params = getParams();
+            if (!params) return;
+            
+            showResult("Fetching PDF with Fetch API...");
+            
+            try {
+                // First try with the RESTful style route
+                const response = await fetch(`/api/v1/orders/${params.orderId}/download?isAdmin=${params.isAdmin}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `booking-confirmation-${params.orderId}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                showResult("PDF downloaded successfully with Fetch API!");
+            } catch (error) {
+                showError(`Error downloading PDF: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        // Method 2: Using window.open()
+        function downloadWithWindowOpen() {
+            const params = getParams();
+            if (!params) return;
+            
+            showResult("Opening PDF in new tab...");
+            
+            // Try all possible route formats
+            const url = `/api/v1/orders/${params.orderId}/download?isAdmin=${params.isAdmin}`;
+            window.open(url, '_blank');
+        }
+        
+        // Method 3: Direct link
+        function downloadDirectly() {
+            const params = getParams();
+            if (!params) return;
+            
+            const directLinkDiv = document.getElementById('directLink');
+            const allUrls = [
+                `/api/v1/orders/download/${params.orderId}?isAdmin=${params.isAdmin}`,
+                `/api/v1/orders/${params.orderId}/download?isAdmin=${params.isAdmin}`,
+                `/api/v1/orders/invoice/${params.orderId}/download?isAdmin=${params.isAdmin}`
+            ];
+            
+            directLinkDiv.innerHTML = '';
+            showResult("Direct download links created below:");
+            
+            allUrls.forEach((url, index) => {
+                const a = document.createElement('a');
+                a.href = url;
+                a.textContent = `Download Option ${index + 1}`;
+                a.target = '_blank';
+                a.style.display = 'block';
+                a.style.margin = '10px 0';
+                directLinkDiv.appendChild(a);
+            });
+        }
+    </script>
+</body>
+</html> 
